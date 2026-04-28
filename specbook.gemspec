@@ -12,7 +12,14 @@ Gem::Specification.new do |spec|
   spec.license     = "MIT"
   spec.homepage    = "https://github.com/steveh/specbook"
 
-  spec.files = Dir["{app,config,lib}/**/*", "LICENSE", "README.md"]
+  spec.files = Dir["{app,config,lib}/**/*", "LICENSE.txt", "README.md", "CHANGELOG.md"]
+  spec.metadata = {
+    "homepage_uri"      => spec.homepage,
+    "source_code_uri"   => spec.homepage,
+    "changelog_uri"     => "#{spec.homepage}/blob/main/CHANGELOG.md",
+    "bug_tracker_uri"   => "#{spec.homepage}/issues",
+    "rubygems_mfa_required" => "true"
+  }
 
   spec.required_ruby_version = ">= 3.1"
 
