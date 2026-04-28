@@ -1,0 +1,25 @@
+Description:
+    Installs Specbook: writes config/initializers/specbook.rb and prints
+    further setup steps.
+
+Example:
+    rails generate specbook:install
+
+    This will create:
+        config/initializers/specbook.rb
+
+    You will then need to:
+
+      1. Mount the engine in config/routes.rb:
+
+           mount Specbook::Engine => "/specs"
+
+      2. Add to spec/rails_helper.rb (or test_helper):
+
+           require "specbook/rspec"
+
+      3. Record specs with:
+
+           RECORD_SPECS=1 bundle exec rspec
+
+      4. Visit /specs in your dev server.

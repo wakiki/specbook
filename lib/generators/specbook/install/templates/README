@@ -1,0 +1,22 @@
+
+==================================================================
+Specbook installed!
+
+Next steps:
+
+  1. Mount the engine in config/routes.rb:
+
+       mount Specbook::Engine => "/specs"
+
+  2. Add to spec/rails_helper.rb:
+
+       require "specbook/rspec"
+
+  3. Record specs with:
+
+       RECORD_SPECS=1 bundle exec rspec
+
+  4. Visit /specs in your dev server.
+
+  Configure Specbook in config/initializers/specbook.rb.
+==================================================================
