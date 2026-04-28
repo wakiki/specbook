@@ -1,0 +1,24 @@
+<div class="sidebar" id="screenshots-sidebar">
+  <div class="filter-bar" style="flex-wrap:wrap; gap:0.3rem 0.75rem;">
+    <span id="total-count" style="font-size:0.75rem; color:#94a3b8;"></span>
+    <span style="font-size:0.75rem;"><span id="pass-count" style="color:#4ade80;"></span> <span id="fail-count" style="color:#f87171;"></span></span>
+    <span style="margin-left:auto; font-size:0.75rem; display:flex; gap:0.5rem;">
+      <a href="#" id="expand-all" style="color:#94a3b8; text-decoration:none;">expand all</a>
+      <a href="#" id="collapse-all" style="color:#94a3b8; text-decoration:none;">collapse all</a>
+    </span>
+  </div>
+  <div class="filter-bar" style="gap:0.3rem; padding:0.4rem 1.25rem; border-bottom:1px solid #334155;">
+    <button class="filter-btn active" data-status-filter="all">All</button>
+    <button class="filter-btn" data-status-filter="passing" style="color:#4ade80;">Passing</button>
+    <button class="filter-btn" data-status-filter="failing" style="color:#f87171;">Failing</button>
+    <span style="color:#334155;margin:0 0.2rem;">|</span>
+    <button class="filter-btn active" data-type-filter="all">All</button>
+    <button class="filter-btn" data-type-filter="visual">📷 Visual</button>
+    <button class="filter-btn" data-type-filter="code">💻 Code</button>
+  </div>
+  <div style="padding:0.4rem 1.25rem; border-bottom:1px solid #334155;">
+    <input type="text" id="spec-search" placeholder="Search specs..." style="width:100%; padding:0.4rem 0.6rem; background:#0f172a; border:1px solid #475569; border-radius:4px; color:#e2e8f0; font-size:0.9rem; outline:none;" />
+  </div>
+  <div id="example-list"></div>
+  <div id="feature-list" class="feature-sidebar"></div>
+</div>

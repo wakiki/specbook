@@ -1,0 +1,13 @@
+<div class="top-bar">
+  <h1>Spec Walkthrough Player</h1>
+  <% if @traces.present? && @manifest.present? %>
+    <div style="display:flex; gap:0.5rem; margin-left:1rem;">
+      <button onclick="switchTab('screenshots')" id="tab-screenshots" style="padding:0.3rem 0.8rem; border-radius:4px; border:1px solid #475569; background:#334155; color:#e2e8f0; cursor:pointer; font-size:0.8rem;">Screenshots (<%= @manifest.size %>)</button>
+      <button onclick="switchTab('traces')" id="tab-traces" style="padding:0.3rem 0.8rem; border-radius:4px; border:1px solid #475569; background:transparent; color:#94a3b8; cursor:pointer; font-size:0.8rem;">Traces (<%= @traces.size %>)</button>
+    </div>
+  <% end %>
+  <span class="autoplay-indicator" id="autoplay-indicator">&#9654; Playing</span>
+  <% if Specbook.config.back_link %>
+    <a href="<%= Specbook.config.back_link[:href] %>"><%= Specbook.config.back_link[:text] || "← Back" %></a>
+  <% end %>
+</div>

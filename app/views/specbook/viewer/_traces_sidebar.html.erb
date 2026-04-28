@@ -1,0 +1,15 @@
+<div class="sidebar" id="traces-sidebar" style="display:none;">
+  <div style="padding:0.75rem 1.25rem; border-bottom:1px solid #334155;">
+    <input type="text" id="trace-search" placeholder="Filter specs..." style="width:100%; background:#0f172a; border:1px solid #475569; color:#e2e8f0; padding:0.4rem 0.6rem; border-radius:4px; font-size:0.8rem;">
+  </div>
+  <div id="trace-list" style="overflow-y:auto;">
+    <% @traces.each_with_index do |t, i| %>
+      <div class="example-item trace-item" data-index="<%= i %>" data-name="<%= t["name"].downcase %>" onclick="selectTrace(<%= i %>)">
+        <span class="badge badge-<%= t["type"] %>"><%= t["type"] %></span>
+        <span style="font-size:0.7rem; padding:0.1rem 0.3rem; border-radius:3px; background:<%= t["status"] == "passed" ? "#166534" : "#7f1d1d" %>; color:<%= t["status"] == "passed" ? "#4ade80" : "#f87171" %>; margin-right:0.3rem;"><%= t["status"] == "passed" ? "✓" : "✗" %></span>
+        <%= t["name"] %>
+        <div class="example-file"><%= t["file"] %>:<%= t["line"] %></div>
+      </div>
+    <% end %>
+  </div>
+</div>

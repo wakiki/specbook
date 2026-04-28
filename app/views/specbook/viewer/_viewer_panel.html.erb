@@ -1,0 +1,44 @@
+<div class="viewer">
+  <div id="traces-viewer" style="flex:1; display:none; align-items:center; justify-content:center;">
+    <div id="trace-detail" style="text-align:center; color:#64748b;">
+      <h2 style="font-size:1.2rem; color:#94a3b8; margin-bottom:0.5rem;">Click a spec to view its trace</h2>
+    </div>
+  </div>
+
+  <div id="screenshots-viewer" style="flex:1; display:flex; flex-direction:column;">
+  <% if @manifest.empty? && @traces.empty? %>
+    <div class="empty-state">
+      <h2>No recordings yet</h2>
+      <p>Run specs with recording enabled:</p>
+      <code>RECORD_SPECS=1 CI=1 bundle exec rspec spec/system/</code>
+      <p style="margin-top:0.5rem;">Playwright traces give you DOM snapshots, network activity, and action timeline.</p>
+      <p>Then refresh this page.</p>
+    </div>
+  <% elsif @manifest.present? %>
+    <div class="screenshot-wrapper" id="screenshot-wrapper">
+      <img id="screenshot-img" src="" alt="Spec screenshot">
+      <div id="overlays"></div>
+    </div>
+    <div class="step-info" id="step-info">
+      <ol class="step-list" id="step-list"></ol>
+    </div>
+    <div class="controls">
+      <button id="btn-prev" title="Previous (←)">&#9664; Prev</button>
+      <button id="btn-next" class="primary" title="Next (→)">Next &#9654;</button>
+      <div class="progress-bar" id="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <button id="btn-play" title="Play/Pause (Space)">&#9654; Play</button>
+      <div class="speed-control">
+        <label>Speed:</label>
+        <select id="speed-select">
+          <option value="3000">Slow (3s)</option>
+          <option value="1500" selected>Normal (1.5s)</option>
+          <option value="800">Fast (0.8s)</option>
+          <option value="400">Very Fast</option>
+        </select>
+      </div>
+    </div>
+  <% end %>
+  </div>
+</div>
