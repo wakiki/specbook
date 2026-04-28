@@ -4,6 +4,8 @@
 
 Specbook is a Rails engine that turns your RSpec system specs and Turnip features into a browsable, animated walkthrough — screenshots with element overlays, Gherkin step cards with syntax-highlighted Ruby source, and a Playwright trace viewer launcher.
 
+![Specbook in action](docs/demo.gif)
+
 ## Why
 
 Reading test output is fine for CI. But when you want to:
