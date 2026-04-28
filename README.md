@@ -13,6 +13,7 @@ Reading test output is fine for CI. But when you want to:
 - Show a designer what the new flow actually looks like
 - Onboard a new dev to the codebase by showing what the specs cover
 - Debug a flaky test by replaying the screenshot timeline
+- Review specs you didn't write yourself — whether from an AI assistant, a junior teammate, a contractor, or a forgotten corner of the suite
 - Demo to a stakeholder what's been built without spinning up the app
 
 …you want a viewer, not a log file.
