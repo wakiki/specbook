@@ -1,0 +1,22 @@
+[
+  {
+    "file": "spec/fixtures/features/example.feature",
+    "scenario": "Visitor signs in",
+    "step_index": 1,
+    "step_keyword": "Given",
+    "step_text": "the user logs in",
+    "screenshot": "step_0001_001.png",
+    "actor": "Alice",
+    "elements": []
+  },
+  {
+    "file": "spec/fixtures/features/example.feature",
+    "scenario": "Visitor signs in",
+    "step_index": 2,
+    "step_keyword": "Then",
+    "step_text": "they are redirected to the dashboard",
+    "screenshot": "step_0001_002.png",
+    "actor": "Alice",
+    "elements": []
+  }
+]
