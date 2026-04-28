@@ -12,7 +12,7 @@ if ENV["RECORD_TRACES"]
   module Specbook
     module Recorders
       module PlaywrightTrace
-        TRACE_DIR = Rails.root.join("tmp/spec_traces")
+        TRACE_DIR = Specbook.config.trace_root
         mattr_accessor :manifest
         self.manifest = []
 

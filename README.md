@@ -82,7 +82,9 @@ Visit your mount point (e.g. `/specs`) to view.
 | Option | Type | Default | Purpose |
 |---|---|---|---|
 | `authorize_with` | Proc | dev/test only | Lambda receiving the controller; return truthy to allow access |
-| `artifact_root` | Pathname | `Rails.root.join("tmp/spec_screenshots")` | Where screenshots/manifest land |
+| `screenshot_root` | Pathname | `Rails.root.join("tmp/spec_screenshots")` | Where screenshots + manifest land |
+| `trace_root` | Pathname | `Rails.root.join("tmp/spec_traces")` | Where Playwright traces land |
+| `feature_root` | Pathname | `Rails.root` | Project root for resolving `.feature` paths in the manifest |
 | `max_runs` | Integer | 20 | Number of historical runs kept |
 | `trace_viewer_port` | Integer | 9322 | Port for Playwright trace server |
 | `actor_colors` | Hash | `{}` | Name → hex color for spec actors |

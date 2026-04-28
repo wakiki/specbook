@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 ## [Unreleased]
 
 ### Added
-- Initial extraction from RegencyOne's in-house spec walkthrough player.
+- Initial extraction as a standalone Rails engine.
 - Rails engine mountable at any path (e.g. `/specs`).
 - Screenshot recorder (`RECORD_SPECS=1`) — captures Capybara screenshots + element bounding boxes after each step.
 - Playwright trace recorder (`RECORD_TRACES=1`) — captures Playwright traces and serves them via `npx playwright show-trace`.

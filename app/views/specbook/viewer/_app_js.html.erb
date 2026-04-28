@@ -296,7 +296,6 @@ function renderExampleList() {
   const filtered = filteredManifest();
 
   // Build 3-level tree: domain → subArea → describeGroup → items
-  // e.g. Admin → Devices → property edit → [reassigns via autocomplete, ...]
   var domains = {};
   var domainOrder = [];
   filtered.forEach(function(ex, i) {

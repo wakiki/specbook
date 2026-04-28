@@ -13,10 +13,10 @@ if ENV["RECORD_SPECS"]
   module Specbook
     module Recorders
       module Screenshot
-        SCREENSHOT_BASE = Rails.root.join("tmp/spec_screenshots")
+        SCREENSHOT_BASE = Specbook.config.screenshot_root
         RUN_TIMESTAMP = Time.now.strftime("%Y%m%d_%H%M%S")
         SCREENSHOT_DIR = SCREENSHOT_BASE.join(RUN_TIMESTAMP)
-        MAX_RUNS = 20
+        MAX_RUNS = Specbook.config.max_runs
 
         mattr_accessor :current_example_name, :current_steps, :manifest, :step_counter,
                        :pending_assertions, :current_page, :current_gherkin_idx
@@ -208,7 +208,7 @@ if ENV["RECORD_SPECS"]
 
         def self.extract_gherkin(file_path, scenario_name)
           path = file_path.start_with?("./") ? file_path[2..] : file_path
-          full_path = Rails.root.join(path)
+          full_path = Specbook.config.feature_root.join(path)
           return nil unless File.exist?(full_path)
 
           content = File.read(full_path)
@@ -567,7 +567,7 @@ if ENV["RECORD_SPECS"]
               source_file, source_line = method_obj.source_location
               params = matches.first.params
               if source_file
-                rel_path = source_file.sub(Rails.root.to_s + "/", "")
+                rel_path = source_file.sub(Specbook.config.feature_root.to_s + "/", "")
                 lines = File.readlines(source_file)
                 # Extract body lines between `step '...' do` and closing `end`
                 first_line = lines[source_line - 1]
