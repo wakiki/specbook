@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<%= csrf_meta_tags %>
+<title>Specbook</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; font-size: 15px; }
+
+.top-bar { background: #1e293b; border-bottom: 1px solid #334155; padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
+.top-bar h1 { font-size: 1rem; font-weight: 600; white-space: nowrap; }
+.top-bar a { margin-left: auto; font-size: 0.95rem; color: #94a3b8; text-decoration: none; }
+.top-bar a:hover { color: #e2e8f0; }
+
+.content-area { display: flex; flex: 1; overflow: hidden; }
+.sidebar { width: 340px; background: #1e293b; border-right: 1px solid #334155; overflow-y: auto; flex-shrink: 0; }
+.filter-bar { display: flex; gap: 0.5rem; padding: 0.75rem 1.25rem; border-bottom: 1px solid #334155; }
+.filter-btn { padding: 0.3rem 0.6rem; border-radius: 4px; border: 1px solid #475569; background: transparent; color: #94a3b8; cursor: pointer; font-size: 1rem; }
+.filter-btn.active { background: #334155; color: #e2e8f0; border-color: #60a5fa; }
+
+.example-item { padding: 0.5rem 1.25rem 0.5rem 3.4rem; border-bottom: 1px solid #0f172a; cursor: pointer; font-size: 0.95rem; line-height: 1.4; transition: background 0.15s; }
+.depth-3 .example-item { padding-left: 4.6rem; }
+.example-item:hover { background: #334155; }
+.example-item.active { background: #1d4ed8; }
+.example-file { font-size: 1rem; color: #64748b; margin-top: 0.25rem; }
+
+.group-header { padding: 0.5rem 1.25rem; border-bottom: 1px solid #334155; cursor: pointer; font-size: 0.95rem; font-weight: 600; color: #94a3b8; display: flex; align-items: center; gap: 0.5rem; transition: background 0.15s; }
+.group-header:hover { background: #334155; color: #e2e8f0; }
+.group-header .chevron { font-size: 0.6rem; display: inline-block; width: 0.8em; }
+.subgroup-header .chevron { font-size: 0.6rem; display: inline-block; width: 0.8em; }
+.group-header .count { margin-left: auto; font-size: 0.95rem; color: #475569; font-weight: 400; }
+.group-header.has-active { color: #60a5fa; }
+.group-body { overflow: hidden; }
+.group-body.collapsed { display: none; }
+.subgroup-header { padding: 0.5rem 1.25rem 0.5rem 2.2rem; cursor: pointer; font-size: 0.95rem; font-weight: 600; color: #94a3b8; display: flex; align-items: center; gap: 0.5rem; transition: background 0.15s; border-bottom: 1px solid #334155; }
+.subgroup-header:hover { background: #334155; color: #e2e8f0; }
+.subgroup-header .count { margin-left: auto; font-size: 0.95rem; color: #475569; font-weight: 400; }
+.subgroup-body { overflow: hidden; }
+.subgroup-body.collapsed { display: none; }
+.example-item.active .example-file { color: #93c5fd; }
+.badge { display: inline-block; font-size: 0.95rem; padding: 0.1rem 0.4rem; border-radius: 3px; margin-right: 0.4rem; font-weight: 600; }
+.badge-happy { background: #166534; color: #4ade80; }
+.badge-adversarial { background: #7f1d1d; color: #f87171; }
+
+.viewer { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.screenshot-wrapper { flex: 1 1 0; display: flex; align-items: center; justify-content: center; background: #0f172a; overflow: hidden; position: relative; min-height: 0; }
+.screenshot-wrapper img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+
+/* Overlays container — positioned over the image */
+#overlays { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
+/* Highlight box for actions */
+.overlay-box { position: absolute; border: 3px solid; border-radius: 4px; pointer-events: none; animation: pulse-highlight 1.5s ease-in-out infinite; }
+.overlay-box.click { border-color: #f97316; background: rgba(249, 115, 22, 0.12); box-shadow: 0 0 12px rgba(249, 115, 22, 0.5); }
+.overlay-box.fill { border-color: #f97316; background: rgba(249, 115, 22, 0.12); box-shadow: 0 0 12px rgba(249, 115, 22, 0.5); }
+.overlay-box.select { border-color: #f97316; background: rgba(249, 115, 22, 0.12); box-shadow: 0 0 12px rgba(249, 115, 22, 0.5); }
+.overlay-box.check { border-color: #f97316; background: rgba(249, 115, 22, 0.12); box-shadow: 0 0 12px rgba(249, 115, 22, 0.5); }
+/* Tap circle — semi-transparent orange dot indicating click/tap point */
+.tap-circle { position: absolute; border-radius: 50%; background: rgba(249, 115, 22, 0.25); border: 2px solid rgba(249, 115, 22, 0.6); pointer-events: none; z-index: 4; animation: tap-pulse 1.5s ease-in-out infinite; }
+@keyframes tap-pulse { 0%, 100% { transform: scale(0.9); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.6; } }
+.overlay-box.assert { border-color: #22c55e; background: rgba(34, 197, 94, 0.12); box-shadow: 0 0 10px rgba(34, 197, 94, 0.4); }
+.overlay-box.assert-negative { border-color: #ef4444; background: rgba(239, 68, 68, 0.08); box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); border-style: dashed; }
+
+@keyframes pulse-highlight { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+/* Assertion label */
+.overlay-label { position: absolute; font-size: 1rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 4px; white-space: nowrap; max-width: 300px; overflow: hidden; text-overflow: ellipsis; pointer-events: none; animation: fade-in 0.3s ease; }
+.overlay-label.positive { background: rgba(34, 197, 94, 0.95); color: white; }
+.overlay-label.negative { background: rgba(239, 68, 68, 0.95); color: white; }
+
+/* Navigate arrow — red arrow pointing at URL bar area at top of screenshot */
+.nav-arrow { position: absolute; pointer-events: none; animation: arrow-bounce 1s ease-in-out infinite; }
+@keyframes arrow-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+/* URL bar overlay */
+.url-overlay { position: absolute; background: rgba(244, 63, 94, 0.12); border: 2px solid #f43f5e; border-radius: 6px; pointer-events: none; display: flex; align-items: center; padding: 0 0.75rem; animation: pulse-highlight 1.5s ease-in-out infinite; }
+.url-overlay-text { color: #f43f5e; font-size: 1rem; font-weight: 700; font-family: monospace; }
+
+/* Action badge */
+.action-badge { position: absolute; top: 12px; left: 12px; padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; pointer-events: none; backdrop-filter: blur(4px); z-index: 10; animation: fade-in 0.3s ease; }
+.action-badge.click { background: rgba(249, 115, 22, 0.9); color: white; }
+.action-badge.fill { background: rgba(249, 115, 22, 0.9); color: white; }
+.action-badge.select { background: rgba(249, 115, 22, 0.9); color: white; }
+.action-badge.check { background: rgba(249, 115, 22, 0.9); color: white; }
+.action-badge.navigate { background: rgba(245, 158, 11, 0.9); color: #1e293b; }
+.action-badge.assert { background: rgba(34, 197, 94, 0.9); color: white; }
+.action-badge.confirm { background: rgba(239, 68, 68, 0.9); color: white; }
+
+/* Cursor icon */
+.cursor-icon { position: absolute; pointer-events: none; width: 24px; height: 24px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); animation: click-bounce 0.6s ease; z-index: 5; }
+@keyframes click-bounce { 0% { transform: scale(1); } 30% { transform: scale(0.8); } 60% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+@keyframes fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Assertion list panel */
+.assertion-list { position: absolute; bottom: 12px; right: 12px; max-width: 350px; pointer-events: none; display: flex; flex-direction: column; gap: 4px; z-index: 10; }
+.assertion-item { padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 1rem; font-weight: 500; backdrop-filter: blur(4px); animation: fade-in 0.3s ease; }
+.assertion-item.positive { background: rgba(34, 197, 94, 0.9); color: white; }
+.assertion-item.negative { background: rgba(239, 68, 68, 0.9); color: white; }
+
+.step-info { background: #1e293b; border-top: 1px solid #334155; padding: 0.5rem 1rem; flex-shrink: 0; min-height: 5.5em; max-height: 18em; overflow-y: auto; }
+.step-list { list-style: none; margin: 0; padding: 0; }
+.step-list li { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 1rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.step-list li:hover { background: #334155; }
+.step-list li.active { background: #1d4ed8; color: #e2e8f0; font-weight: 500; }
+.step-list li .step-icon { display: inline-block; width: 1.2em; text-align: center; margin-right: 0.3em; }
+body.selecting .step-list li, body.selecting .scenario-block, body.selecting .example-item { cursor: text; }
+
+.controls { background: #1e293b; border-top: 1px solid #334155; padding: 0.5rem 1.5rem; display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
+.controls button { background: #334155; border: 1px solid #475569; color: #e2e8f0; padding: 0.5rem 1.25rem; border-radius: 6px; cursor: pointer; font-size: 1rem; transition: all 0.15s; }
+.controls button:hover:not(:disabled) { background: #475569; }
+.controls button:disabled { opacity: 0.4; cursor: not-allowed; }
+.controls button.primary { background: #2563eb; border-color: #3b82f6; }
+.controls button.primary:hover:not(:disabled) { background: #1d4ed8; }
+
+.progress-bar { flex: 1; height: 6px; background: #334155; border-radius: 3px; overflow: hidden; cursor: pointer; }
+.progress-fill { height: 100%; background: #3b82f6; transition: width 0.2s; border-radius: 3px; }
+
+.speed-control { display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; color: #94a3b8; }
+.speed-control select { background: #334155; border: 1px solid #475569; color: #e2e8f0; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.95rem; }
+
+.autoplay-indicator { font-size: 1rem; color: #4ade80; display: none; }
+.autoplay-indicator.active { display: inline; }
+
+/* Setup step overlay — shown when no screenshot exists */
+.setup-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 1.5rem; color: #94a3b8; text-align: center; padding: 2rem; }
+.setup-overlay .setup-icon { font-size: 3rem; opacity: 0.5; }
+.setup-overlay .setup-keyword { color: #60a5fa; font-weight: 700; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em; }
+.setup-overlay .setup-text { color: #e2e8f0; font-size: 1.2rem; font-weight: 500; max-width: 500px; line-height: 1.6; }
+.setup-overlay .setup-text .quoted { color: #4ade80; }
+.setup-overlay .setup-note { font-size: 0.95rem; color: #64748b; font-style: italic; }
+
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 1rem; color: #64748b; }
+.empty-state h2 { font-size: 1.3rem; color: #94a3b8; }
+.empty-state p { max-width: 500px; text-align: center; line-height: 1.6; }
+.empty-state code { background: #334155; padding: 0.5rem 1rem; border-radius: 6px; font-size: 1rem; color: #e2e8f0; }
+
+/* Full gherkin view — for service/model specs with no screenshots */
+.gherkin-card { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 2rem; }
+.gherkin-card .gherkin-title { font-size: 1rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem; }
+.gherkin-card .gherkin-scenario-name { font-size: 1.3rem; color: #e2e8f0; font-weight: 600; margin-bottom: 1.5rem; text-align: center; max-width: 600px; }
+.gherkin-card .gherkin-steps-list { list-style: none; padding: 0; margin: 0; max-width: 600px; width: 100%; }
+.gherkin-card .gherkin-steps-list li { padding: 0.4rem 0.75rem; font-size: 1rem; color: #cbd5e1; line-height: 1.5; border-radius: 4px; }
+.gherkin-card .gherkin-steps-list li .kw { color: #60a5fa; font-weight: 600; display: inline-block; min-width: 3.5em; }
+.gherkin-card .gherkin-steps-list li .kw-then { color: #4ade80; }
+.gherkin-card .gherkin-steps-list li .quoted { color: #4ade80; }
+.gherkin-card .gherkin-steps-list .bg-label { color: #64748b; font-size: 1rem; font-style: italic; padding: 0.5rem 0.75rem 0.15rem; }
+.gherkin-card .gherkin-status { margin-top: 1.5rem; font-size: 1rem; font-weight: 500; }
+.gherkin-card .gherkin-status.passed { color: #4ade80; }
+.gherkin-card .gherkin-status.failed { color: #f87171; }
+
+/* Step source code block */
+.step-source { margin: 0.2rem 0 0.4rem 3.5em; background: #1e293b; border: 1px solid #334155; border-radius: 4px; padding: 0.4rem 0.6rem; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 1rem; color: #94a3b8; white-space: pre-wrap; line-height: 1.5; max-height: 200px; overflow-y: auto; }
+.step-source .src-file { color: #64748b; font-size: 0.95rem; display: block; margin-bottom: 0.3rem; text-decoration: none; pointer-events: auto; }
+.step-source .src-file:hover { color: #94a3b8; text-decoration: underline; }
+.step-source .src-keyword { color: #c084fc; }
+.step-source .src-string { color: #4ade80; }
+.step-source .src-comment { color: #475569; font-style: italic; }
+.step-source .src-method { color: #60a5fa; }
+
+/* Gherkin feature sidebar */
+.feature-sidebar { padding: 0; font-family: 'SF Mono', 'Menlo', 'Monaco', monospace; font-size: 1rem; line-height: 1.6; }
+.feature-header { padding: 1rem 1.25rem 0.5rem; border-bottom: 1px solid #334155; }
+.feature-keyword { color: #c084fc; font-weight: 600; }
+.feature-name { color: #e2e8f0; font-weight: 600; font-size: 1rem; }
+.feature-desc { color: #94a3b8; font-style: italic; padding: 0.25rem 0 0 1rem; font-size: 1rem; }
+.feature-background { padding: 0.75rem 1.25rem; border-bottom: 1px solid #334155; background: #1a2332; }
+.feature-bg-label { color: #94a3b8; font-weight: 600; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+.gherkin-step { padding: 0.1rem 0 0.1rem 1rem; color: #cbd5e1; }
+.gherkin-step .kw { color: #60a5fa; font-weight: 600; display: inline-block; min-width: 3.5em; }
+.gherkin-step .quoted { color: #4ade80; }
+.scenario-block { border-bottom: 1px solid #334155; cursor: pointer; transition: background 0.15s; }
+.scenario-block:hover { background: #253348; }
+.scenario-block.active { background: #1e3a5f; border-left: 3px solid #3b82f6; }
+.scenario-header { padding: 0.6rem 1.25rem 0.3rem; display: flex; flex-direction: column; gap: 0.1rem; }
+.scenario-tag { color: #f87171; font-size: 1rem; }
+.scenario-name { color: #e2e8f0; font-weight: 500; }
+.scenario-status { margin-left: auto; font-size: 1rem; }
+.scenario-steps { padding: 0 1.25rem 0.6rem; }
+.scenario-steps .gherkin-step { font-size: 1rem; opacity: 0.7; }
+.scenario-block.active .scenario-steps .gherkin-step { opacity: 1; }
+.scenario-block.active .gherkin-step.current-step { background: #1d4ed8; border-radius: 3px; margin: 0 -0.5rem; padding-left: 1.5rem; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>Spec Walkthrough Player</h1>
+  <% if @traces.present? && @manifest.present? %>
+    <div style="display:flex; gap:0.5rem; margin-left:1rem;">
+      <button onclick="switchTab('screenshots')" id="tab-screenshots" style="padding:0.3rem 0.8rem; border-radius:4px; border:1px solid #475569; background:#334155; color:#e2e8f0; cursor:pointer; font-size:0.8rem;">Screenshots (<%= @manifest.size %>)</button>
+      <button onclick="switchTab('traces')" id="tab-traces" style="padding:0.3rem 0.8rem; border-radius:4px; border:1px solid #475569; background:transparent; color:#94a3b8; cursor:pointer; font-size:0.8rem;">Traces (<%= @traces.size %>)</button>
+    </div>
+  <% end %>
+  <span class="autoplay-indicator" id="autoplay-indicator">&#9654; Playing</span>
+  <% if Specbook.config.back_link %>
+    <a href="<%= Specbook.config.back_link[:href] %>"><%= Specbook.config.back_link[:text] || "← Back" %></a>
+  <% end %>
+</div>
+
+<div class="content-area">
+  <!-- Traces sidebar -->
+  <div class="sidebar" id="traces-sidebar" style="display:none;">
+    <div style="padding:0.75rem 1.25rem; border-bottom:1px solid #334155;">
+      <input type="text" id="trace-search" placeholder="Filter specs..." style="width:100%; background:#0f172a; border:1px solid #475569; color:#e2e8f0; padding:0.4rem 0.6rem; border-radius:4px; font-size:0.8rem;">
+    </div>
+    <div id="trace-list" style="overflow-y:auto;">
+      <% @traces.each_with_index do |t, i| %>
+        <div class="example-item trace-item" data-index="<%= i %>" data-name="<%= t["name"].downcase %>" onclick="selectTrace(<%= i %>)">
+          <span class="badge badge-<%= t["type"] %>"><%= t["type"] %></span>
+          <span style="font-size:0.7rem; padding:0.1rem 0.3rem; border-radius:3px; background:<%= t["status"] == "passed" ? "#166534" : "#7f1d1d" %>; color:<%= t["status"] == "passed" ? "#4ade80" : "#f87171" %>; margin-right:0.3rem;"><%= t["status"] == "passed" ? "✓" : "✗" %></span>
+          <%= t["name"] %>
+          <div class="example-file"><%= t["file"] %>:<%= t["line"] %></div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Screenshots sidebar -->
+  <div class="sidebar" id="screenshots-sidebar">
+    <div class="filter-bar" style="flex-wrap:wrap; gap:0.3rem 0.75rem;">
+      <span id="total-count" style="font-size:0.75rem; color:#94a3b8;"></span>
+      <span style="font-size:0.75rem;"><span id="pass-count" style="color:#4ade80;"></span> <span id="fail-count" style="color:#f87171;"></span></span>
+      <span style="margin-left:auto; font-size:0.75rem; display:flex; gap:0.5rem;">
+        <a href="#" id="expand-all" style="color:#94a3b8; text-decoration:none;">expand all</a>
+        <a href="#" id="collapse-all" style="color:#94a3b8; text-decoration:none;">collapse all</a>
+      </span>
+    </div>
+    <div class="filter-bar" style="gap:0.3rem; padding:0.4rem 1.25rem; border-bottom:1px solid #334155;">
+      <button class="filter-btn active" data-status-filter="all">All</button>
+      <button class="filter-btn" data-status-filter="passing" style="color:#4ade80;">Passing</button>
+      <button class="filter-btn" data-status-filter="failing" style="color:#f87171;">Failing</button>
+      <span style="color:#334155;margin:0 0.2rem;">|</span>
+      <button class="filter-btn active" data-type-filter="all">All</button>
+      <button class="filter-btn" data-type-filter="visual">📷 Visual</button>
+      <button class="filter-btn" data-type-filter="code">💻 Code</button>
+    </div>
+    <div style="padding:0.4rem 1.25rem; border-bottom:1px solid #334155;">
+      <input type="text" id="spec-search" placeholder="Search specs..." style="width:100%; padding:0.4rem 0.6rem; background:#0f172a; border:1px solid #475569; border-radius:4px; color:#e2e8f0; font-size:0.9rem; outline:none;" />
+    </div>
+    <div id="example-list"></div>
+    <div id="feature-list" class="feature-sidebar"></div>
+  </div>
+
+  <div class="viewer">
+    <!-- Traces viewer -->
+    <div id="traces-viewer" style="flex:1; display:none; align-items:center; justify-content:center;">
+      <div id="trace-detail" style="text-align:center; color:#64748b;">
+        <h2 style="font-size:1.2rem; color:#94a3b8; margin-bottom:0.5rem;">Click a spec to view its trace</h2>
+      </div>
+    </div>
+
+    <!-- Screenshots viewer / empty state -->
+    <div id="screenshots-viewer" style="flex:1; display:flex; flex-direction:column;">
+    <% if @manifest.empty? && @traces.empty? %>
+      <div class="empty-state">
+        <h2>No recordings yet</h2>
+        <p>Run specs with recording enabled:</p>
+        <code>RECORD_SPECS=1 CI=1 bundle exec rspec spec/system/</code>
+        <p style="margin-top:0.5rem;">Playwright traces give you DOM snapshots, network activity, and action timeline.</p>
+        <p>Then refresh this page.</p>
+      </div>
+    <% elsif @manifest.present? %>
+      <div class="screenshot-wrapper" id="screenshot-wrapper">
+        <img id="screenshot-img" src="" alt="Spec screenshot">
+        <div id="overlays"></div>
+      </div>
+      <div class="step-info" id="step-info">
+        <ol class="step-list" id="step-list"></ol>
+      </div>
+      <div class="controls">
+        <button id="btn-prev" title="Previous (←)">&#9664; Prev</button>
+        <button id="btn-next" class="primary" title="Next (→)">Next &#9654;</button>
+        <div class="progress-bar" id="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <button id="btn-play" title="Play/Pause (Space)">&#9654; Play</button>
+        <div class="speed-control">
+          <label>Speed:</label>
+          <select id="speed-select">
+            <option value="3000">Slow (3s)</option>
+            <option value="1500" selected>Normal (1.5s)</option>
+            <option value="800">Fast (0.8s)</option>
+            <option value="400">Very Fast</option>
+          </select>
+        </div>
+      </div>
+    <% end %>
+    </div><!-- screenshots-viewer -->
+  </div>
+</div>
+
+<script>
+window.Specbook = window.Specbook || {};
+window.Specbook.config = <%= raw @specbook_js_config.to_json %>;
+</script>
+
+<script>
+const traces = <%= raw @traces.to_json %>;
+const traceBase = "<%= @traces.present? ? specbook.trace_path(filename: '__PH__').sub('__PH__', '') : '' %>";
+
+function switchTab(tab) {
+  var tSidebar = document.getElementById('traces-sidebar');
+  var sSidebar = document.getElementById('screenshots-sidebar');
+  var tViewer = document.getElementById('traces-viewer');
+  var sViewer = document.getElementById('screenshots-viewer');
+  var tBtn = document.getElementById('tab-traces');
+  var sBtn = document.getElementById('tab-screenshots');
+  if (tab === 'traces') {
+    tSidebar.style.display = ''; sSidebar.style.display = 'none';
+    tViewer.style.display = ''; sViewer.style.display = 'none';
+    tBtn.style.background = '#334155'; tBtn.style.color = '#e2e8f0';
+    sBtn.style.background = 'transparent'; sBtn.style.color = '#94a3b8';
+  } else {
+    tSidebar.style.display = 'none'; sSidebar.style.display = '';
+    tViewer.style.display = 'none'; sViewer.style.display = '';
+    tBtn.style.background = 'transparent'; tBtn.style.color = '#94a3b8';
+    sBtn.style.background = '#334155'; sBtn.style.color = '#e2e8f0';
+  }
+}
+
+function selectTrace(index) {
+  var items = document.querySelectorAll('.trace-item');
+  items.forEach(function(el) { el.classList.remove('active'); });
+  items[index].classList.add('active');
+
+  var t = traces[index];
+  var detail = document.getElementById('trace-detail');
+  detail.innerHTML =
+    '<div style="max-width:500px; text-align:left;">' +
+      '<h2 style="font-size:1.1rem; margin-bottom:0.3rem; color:#e2e8f0;">' + t.name + '</h2>' +
+      '<div style="font-size:0.8rem; color:#64748b; margin-bottom:1.5rem;">' + t.file + ':' + t.line + '</div>' +
+      '<button onclick="openTrace(\'' + t.trace + '\', this)" style="padding:0.75rem 2rem; background:#1d4ed8; color:white; border:none; border-radius:8px; font-size:1rem; cursor:pointer; font-weight:600;">Open in Trace Viewer</button>' +
+      '<span id="trace-status" style="margin-left:1rem; font-size:0.85rem; color:#4ade80;"></span>' +
+    '</div>';
+}
+
+function openTrace(filename, btn) {
+  var status = document.getElementById('trace-status');
+  status.textContent = 'Launching...';
+  btn.disabled = true;
+
+  var csrfToken = document.querySelector('meta[name="csrf-token"]');
+  fetch(traceBase + filename + '/view', {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken ? csrfToken.content : '' }
+  }).then(function(r) { return r.json(); })
+    .then(function(data) {
+      status.textContent = '';
+      btn.disabled = false;
+      window.open(data.url, '_blank');
+    }).catch(function(e) {
+      status.textContent = 'Error: ' + e.message;
+      status.style.color = '#f87171';
+      btn.disabled = false;
+    });
+}
+
+// Trace search filter
+var traceSearch = document.getElementById('trace-search');
+if (traceSearch) {
+  traceSearch.addEventListener('input', function() {
+    var q = this.value.toLowerCase();
+    document.querySelectorAll('.trace-item').forEach(function(el) {
+      el.style.display = el.dataset.name.includes(q) ? '' : 'none';
+    });
+  });
+}
+
+const manifest = <%= raw @manifest.to_json %>;
+const features = <%= raw @features.to_json %>;
+const screenshotBase = "<%= specbook.screenshot_path(filename: '__PLACEHOLDER__').sub('__PLACEHOLDER__', '') %>";
+
+let currentExampleIdx = 0;
+let currentStepIdx = 0;
+let currentGherkinIdx = 0;  // For gherkin features: index into bg+scenario steps
+let autoplayTimer = null;
+let filter = 'all';
+
+// Don't navigate on click if user is selecting text
+function hasTextSelection() {
+  var sel = window.getSelection();
+  return sel && sel.toString().length > 0;
+}
+
+function isGherkinExample(ex) {
+  return ex && ex.gherkin && ex.gherkin.scenario;
+}
+
+function gherkinStepCount(ex) {
+  if (!isGherkinExample(ex)) return 0;
+  // +2 for intro and end cards
+  return (ex.gherkin.background || []).length + ex.gherkin.scenario.length + 2;
+}
+
+function filteredManifest() {
+  if (filter === 'all') return manifest;
+  return manifest.filter(ex => ex.type === filter);
+}
+
+function stepSummary(steps) {
+  var parts = [];
+  steps.forEach(function(s) {
+    var a = s.action || 'navigate';
+    var desc = s.description || '';
+    if (a === 'navigate') parts.push('→ ' + desc.replace('Navigate to ', ''));
+    else if (a === 'click') parts.push('🖱 ' + desc.replace(/^Click (button |link )?/, ''));
+    else if (a === 'fill') parts.push('⌨ ' + desc.replace(/^Type /, ''));
+    else if (a === 'select') parts.push('▼ ' + desc.replace(/^Select /, ''));
+    else if (a === 'assert') {
+      var count = (s.assertions || []).length;
+      parts.push('✓ ' + count + ' assertion' + (count !== 1 ? 's' : ''));
+    }
+  });
+  return parts.slice(0, 4).join(' › ') + (parts.length > 4 ? ' …' : '');
+}
+
+function highlightQuotes(text) {
+  return text.replace(/"([^"]*)"/g, '"<span class="quoted">$1</span>"');
+}
+
+var featureCollapsed = {};
+
+function renderFeatureSidebar(featureFile, activeScenarioName) {
+  var featureList = document.getElementById('feature-list');
+  var exampleList = document.getElementById('example-list');
+  exampleList.style.display = 'none';
+  featureList.style.display = '';
+
+  var filtered = filteredManifest();
+
+  // Build map of all feature files → their scenarios in manifest
+  var allFeatureFiles = [];
+  var fileScenarios = {};
+  filtered.forEach(function(ex, i) {
+    if (!ex.file.endsWith('.feature') || !features[ex.file]) return;
+    if (!fileScenarios[ex.file]) { fileScenarios[ex.file] = []; allFeatureFiles.push(ex.file); }
+    var sName = (ex.groups || []).length >= 2 ? ex.groups[ex.groups.length - 1] : ex.description;
+    fileScenarios[ex.file].push({ name: sName, idx: i, status: ex.status });
+  });
+
+  // Group by top-level category (UI Features vs non-UI), then by domain
+  var uiDomains = (window.Specbook && window.Specbook.config && window.Specbook.config.uiDomains) || [];
+  var categories = { 'UI Features': {}, 'Services': {}, 'Models': {}, 'Jobs': {}, 'Policies': {}, 'Other': {} };
+  var categoryOrder = ['UI Features', 'Services', 'Models', 'Jobs', 'Policies', 'Other'];
+  var catDomainOrder = {};
+  categoryOrder.forEach(function(c) { catDomainOrder[c] = []; });
+
+  allFeatureFiles.forEach(function(f) {
+    var parts = f.replace(/^spec\/features\//, '').split('/');
+    var topDir = parts[0];
+    var cat, domain;
+    if (uiDomains.indexOf(topDir) >= 0) {
+      cat = 'UI Features';
+      domain = titleCase(topDir);
+    } else if (topDir === 'services') {
+      cat = 'Services';
+      domain = parts.length > 2 ? titleCase(parts[1]) : 'General';
+    } else if (topDir === 'models') {
+      cat = 'Models';
+      domain = 'Models';
+    } else if (topDir === 'jobs') {
+      cat = 'Jobs';
+      domain = 'Jobs';
+    } else if (topDir === 'policies') {
+      cat = 'Policies';
+      domain = 'Policies';
+    } else {
+      cat = 'Other';
+      domain = titleCase(topDir);
+    }
+    if (!categories[cat][domain]) { categories[cat][domain] = []; catDomainOrder[cat].push(domain); }
+    categories[cat][domain].push(f);
+  });
+
+  function chevron(key) { return featureCollapsed[key] ? '&#9654;' : '&#9660;'; }
+
+  var html = '';
+
+  categoryOrder.forEach(function(cat) {
+    var catDomains = catDomainOrder[cat];
+    if (catDomains.length === 0) return;
+    var catKey = 'cat_' + cat;
+    if (featureCollapsed[catKey] === undefined) featureCollapsed[catKey] = false;
+    var catCount = 0;
+    catDomains.forEach(function(d) { catCount += categories[cat][d].reduce(function(sum, f) { return sum + (fileScenarios[f] || []).length; }, 0); });
+
+    html += '<div class="group-header" data-ftoggle="' + catKey + '" style="font-size:1rem;"><span class="chevron">' + chevron(catKey) + '</span>' + cat + '<span class="count">' + catCount + '</span></div>';
+    html += '<div class="group-body' + (featureCollapsed[catKey] ? ' collapsed' : '') + '" data-fbody="' + catKey + '">';
+
+  catDomains.forEach(function(domain) {
+    var domKey = 'domain_' + cat + '_' + domain;
+    if (featureCollapsed[domKey] === undefined) featureCollapsed[domKey] = (cat !== 'UI Features');
+    var domFiles = categories[cat][domain];
+    var domCount = domFiles.reduce(function(sum, f) { return sum + (fileScenarios[f] || []).length; }, 0);
+
+    // Only show domain sub-header if category has multiple domains
+    if (catDomains.length > 1) {
+      html += '<div class="group-header" data-ftoggle="' + domKey + '" style="padding-left:1.8rem;font-size:0.95rem;"><span class="chevron">' + chevron(domKey) + '</span>' + domain + '<span class="count">' + domCount + '</span></div>';
+      html += '<div class="group-body' + (featureCollapsed[domKey] ? ' collapsed' : '') + '" data-fbody="' + domKey + '">';
+    }
+
+    domFiles.forEach(function(f) {
+      var feat = features[f];
+      var isCurrentFeature = f === featureFile;
+      var fKey = 'feat_' + f;
+      if (featureCollapsed[fKey] === undefined) featureCollapsed[fKey] = !isCurrentFeature;
+
+      var scenarios = fileScenarios[f] || [];
+      var passCount = scenarios.filter(function(s) { return s.status !== 'failed'; }).length;
+      var failCount = scenarios.length - passCount;
+      var statusSummary = failCount > 0 ? '<span style="color:#f87171;">' + failCount + '✗</span>' : '<span style="color:#4ade80;">' + passCount + '✓</span>';
+
+      html += '<div class="subgroup-header' + (isCurrentFeature ? ' has-active' : '') + '" data-ftoggle="' + fKey + '" style="padding-left:2.2rem;"><span class="chevron">' + chevron(fKey) + '</span>' + feat.name + '<span class="count">' + statusSummary + '</span></div>';
+      html += '<div class="subgroup-body' + (featureCollapsed[fKey] ? ' collapsed' : '') + '" data-fbody="' + fKey + '">';
+
+      // Feature description
+      if (feat.description && feat.description.length > 0) {
+        feat.description.forEach(function(line) {
+          html += '<div style="padding:0.1rem 1.25rem 0.1rem 3.4rem;color:#94a3b8;font-style:italic;font-size:0.72rem;">' + line + '</div>';
+        });
+      }
+
+      scenarios.forEach(function(s) {
+        var isActive = isCurrentFeature && s.name === activeScenarioName;
+        var cls = 'scenario-block' + (isActive ? ' active' : '');
+        var icon = s.status === 'failed' ? '<span style="color:#f87171;">✗</span>' : '<span style="color:#4ade80;">✓</span>';
+        var ex = filtered[s.idx];
+        var screenshotCount = ex && ex.steps ? ex.steps.filter(function(st) { return st.file; }).length : 0;
+        var gherkinSteps = ex && ex.gherkin ? (ex.gherkin.background || []).length + (ex.gherkin.scenario || []).length : 0;
+        var stepCount = gherkinSteps || (ex && ex.steps ? ex.steps.length : 0);
+        var nameColor = s.status === 'failed' ? 'color:#f87171;' : 'color:#4ade80;';
+        var meta = '<div style="color:#94a3b8;font-size:0.8em;margin-top:0.15em;">';
+        meta += stepCount + ' steps';
+        if (screenshotCount > 0) meta += ' · 📷 ' + screenshotCount;
+        meta += '</div>';
+        html += '<div class="' + cls + '" data-scenario-idx="' + s.idx + '" style="padding-left:3.4rem;"><div class="scenario-header"><div class="scenario-name" style="' + nameColor + '">' + s.name + '</div>' + meta + '</div></div>';
+      });
+
+      html += '</div>';
+    });
+
+    if (catDomains.length > 1) {
+      html += '</div>'; // close domain group-body
+    }
+  }); // end domain loop
+
+    html += '</div>'; // close category group-body
+  }); // end category loop
+
+  featureList.innerHTML = html;
+
+  // Toggle handlers
+  featureList.querySelectorAll('[data-ftoggle]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var key = el.dataset.ftoggle;
+      featureCollapsed[key] = !featureCollapsed[key];
+      var body = featureList.querySelector('[data-fbody="' + key + '"]');
+      var chev = el.querySelector('.chevron');
+      if (featureCollapsed[key]) { body.classList.add('collapsed'); chev.innerHTML = '&#9654;'; }
+      else { body.classList.remove('collapsed'); chev.innerHTML = '&#9660;'; }
+    });
+  });
+
+  // Scenario click handlers
+  featureList.querySelectorAll('[data-scenario-idx]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      if (hasTextSelection()) return;
+      selectExample(parseInt(el.dataset.scenarioIdx));
+    });
+  });
+
+  // Scroll active into view
+  var activeBlock = featureList.querySelector('.scenario-block.active');
+  if (activeBlock) activeBlock.scrollIntoView({ block: 'nearest' });
+}
+
+function titleCase(s) { return s.split('_').map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' '); }
+
+function domainFromFile(file) {
+  // Returns [topLevel, subArea] e.g. ["Admin", "Devices"] or ["Mobile", null]
+  var path = file.replace(/^spec\/(system|features)\//, '');
+  var parts = path.split('/');
+  if (parts.length >= 3) return [titleCase(parts[0]), titleCase(parts[1])];
+  return [titleCase(parts[0]), null];
+}
+
+// Track collapsed state for groups and subgroups
+var collapsed = {};
+
+function renderExampleList() {
+  const list = document.getElementById('example-list');
+  const filtered = filteredManifest();
+
+  // Build 3-level tree: domain → subArea → describeGroup → items
+  // e.g. Admin → Devices → property edit → [reassigns via autocomplete, ...]
+  var domains = {};
+  var domainOrder = [];
+  filtered.forEach(function(ex, i) {
+    var d = domainFromFile(ex.file);
+    var domain = d[0], subArea = d[1] || '(root)';
+    if (!domains[domain]) { domains[domain] = { subAreas: {}, subOrder: [], total: 0 }; domainOrder.push(domain); }
+    if (!domains[domain].subAreas[subArea]) { domains[domain].subAreas[subArea] = { groups: {}, groupOrder: [], items: [], total: 0 }; domains[domain].subOrder.push(subArea); }
+    domains[domain].total++;
+    domains[domain].subAreas[subArea].total++;
+
+    var descGroups = (ex.groups || []).slice(1);
+    var groupKey = descGroups.length > 0 ? descGroups.join(' › ') : '';
+    var groupLabel = descGroups.length > 0 ? descGroups[descGroups.length - 1] : '';
+    var sa = domains[domain].subAreas[subArea];
+    if (groupKey) {
+      if (!sa.groups[groupKey]) { sa.groups[groupKey] = { label: groupLabel, items: [] }; sa.groupOrder.push(groupKey); }
+      sa.groups[groupKey].items.push({ ex: ex, idx: i });
+    } else {
+      sa.items.push({ ex: ex, idx: i });
+    }
+  });
+
+  // Active tracking
+  var activeEx = filtered[currentExampleIdx];
+  var activeDomain = activeEx ? domainFromFile(activeEx.file)[0] : null;
+  var activeSubArea = activeEx ? (domainFromFile(activeEx.file)[1] || '(root)') : null;
+
+  // Auto-expand: domains/subAreas with failures or active item
+  var failDomains = {}, failSubAreas = {};
+  filtered.forEach(function(ex) {
+    if (ex.status === 'failed') {
+      var d = domainFromFile(ex.file);
+      failDomains[d[0]] = true;
+      failSubAreas[d[0] + '::' + (d[1] || '(root)')] = true;
+    }
+  });
+  domainOrder.forEach(function(dom) {
+    if (collapsed[dom] === undefined) collapsed[dom] = !(dom === activeDomain || failDomains[dom]);
+    domains[dom].subOrder.forEach(function(sa) {
+      var k = dom + '::' + sa;
+      if (collapsed[k] === undefined) collapsed[k] = !(sa === activeSubArea && dom === activeDomain) && !failSubAreas[k];
+    });
+  });
+
+  function renderItem(it) {
+    var ex = it.ex;
+    var displayName = ex.description || ex.name;
+    if (displayName.length > 0) displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+    if (ex.type === 'adversarial') displayName += ' <span style="color:#f87171;font-size:0.7rem;">(adversarial)</span>';
+    var active = it.idx === currentExampleIdx ? 'active' : '';
+    var statusColor = ex.status === 'failed' ? 'color:#f87171' : 'color:#4ade80';
+    var editorBase = (window.Specbook && window.Specbook.config && window.Specbook.config.editorBase) || null;
+    var openLink = editorBase
+      ? '<a href="' + editorBase + '/' + ex.file + ':' + ex.line + '" style="color:inherit;text-decoration:underline;" onclick="event.stopPropagation()">open</a>'
+      : '<span style="color:inherit;">' + ex.file + ':' + ex.line + '</span>';
+    return '<div class="example-item ' + active + '" style="' + statusColor + '" data-idx="' + it.idx + '">' +
+      displayName + '<div class="example-file">' + ex.steps.length + ' steps · ' + openLink + '</div></div>';
+  }
+
+  function chevron(key) { return collapsed[key] ? '&#9654;' : '&#9660;'; }
+  function bodyClass(key) { return collapsed[key] ? ' collapsed' : ''; }
+
+  var html = '';
+  domainOrder.forEach(function(dom) {
+    var d = domains[dom];
+    var domCls = 'group-header' + (dom === activeDomain ? ' has-active' : '');
+    html += '<div class="' + domCls + '" data-toggle="' + dom + '"><span class="chevron">' + chevron(dom) + '</span>' + dom + '<span class="count">' + d.total + '</span></div>';
+    html += '<div class="group-body' + bodyClass(dom) + '" data-body="' + dom + '">';
+
+    d.subOrder.forEach(function(sa) {
+      var sub = d.subAreas[sa];
+      var saKey = dom + '::' + sa;
+      if (sa === '(root)') {
+        // No sub-area header, render items directly
+        sub.items.forEach(function(it) { html += renderItem(it); });
+        sub.groupOrder.forEach(function(gk) { var g = sub.groups[gk]; g.items.forEach(function(it) { html += renderItem(it); }); });
+      } else {
+        html += '<div class="subgroup-header" data-toggle="' + saKey + '"><span class="chevron">' + chevron(saKey) + '</span>' + sa + '<span class="count">' + sub.total + '</span></div>';
+        html += '<div class="subgroup-body' + bodyClass(saKey) + '" data-body="' + saKey + '">';
+
+        sub.items.forEach(function(it) { html += renderItem(it); });
+        var lastGroup = '';
+        sub.groupOrder.forEach(function(gk) {
+          var g = sub.groups[gk];
+          if (g.label !== lastGroup) {
+            var gKey = saKey + '::' + g.label;
+            if (collapsed[gKey] === undefined) collapsed[gKey] = false;
+            html += '<div class="subgroup-header" style="padding-left:3.4rem;" data-toggle="' + gKey + '"><span class="chevron">' + chevron(gKey) + '</span>' + g.label + '<span class="count">' + g.items.length + '</span></div>';
+            html += '<div class="subgroup-body depth-3' + bodyClass(gKey) + '" data-body="' + gKey + '">';
+            lastGroup = g.label;
+          }
+          g.items.forEach(function(it) { html += renderItem(it); });
+          // Check if next group is different — close the div
+          var nextGk = sub.groupOrder[sub.groupOrder.indexOf(gk) + 1];
+          var nextLabel = nextGk ? sub.groups[nextGk].label : null;
+          if (nextLabel !== g.label) {
+            html += '</div>';
+          }
+        });
+        html += '</div>';
+      }
+    });
+    html += '</div>';
+  });
+
+  list.innerHTML = html;
+
+  // Summary counts
+  var passCount = filtered.filter(function(ex) { return ex.status !== 'failed'; }).length;
+  var failCount = filtered.filter(function(ex) { return ex.status === 'failed'; }).length;
+  document.getElementById('total-count').textContent = filtered.length + ' specs';
+  document.getElementById('pass-count').textContent = passCount + ' passing';
+  document.getElementById('fail-count').textContent = failCount > 0 ? failCount + ' failing' : '';
+
+  // Click handlers for items
+  list.querySelectorAll('.example-item').forEach(function(el) {
+    el.addEventListener('click', function() { if (hasTextSelection()) return; selectExample(parseInt(el.dataset.idx)); });
+  });
+
+  // Click handlers for all toggle headers (groups + subgroups)
+  list.querySelectorAll('[data-toggle]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var key = el.dataset.toggle;
+      collapsed[key] = !collapsed[key];
+      var body = list.querySelector('[data-body="' + key + '"]');
+      var chevron = el.querySelector('.chevron');
+      if (collapsed[key]) {
+        body.classList.add('collapsed');
+        chevron.innerHTML = '&#9654;';
+      } else {
+        body.classList.remove('collapsed');
+        chevron.innerHTML = '&#9660;';
+      }
+    });
+  });
+
+}
+
+// Filter state — two orthogonal radio groups + search
+var statusFilter = 'all';  // all | passing | failing
+var typeFilter = 'all';    // all | visual | code
+var searchQuery = '';
+
+function scenarioVisible(ex) {
+  // Status filter
+  if (statusFilter === 'passing' && ex.status === 'failed') return false;
+  if (statusFilter === 'failing' && ex.status !== 'failed') return false;
+  // Type filter
+  var hasScreenshots = ex.steps && ex.steps.some(function(st) { return st.file; });
+  if (typeFilter === 'visual' && !hasScreenshots) return false;
+  if (typeFilter === 'code' && hasScreenshots) return false;
+  // Search filter
+  if (searchQuery) {
+    var q = searchQuery.toLowerCase();
+    var searchText = (ex.name || '') + ' ' + (ex.description || '') + ' ' + (ex.file || '');
+    // Include gherkin steps in search
+    if (ex.gherkin) {
+      (ex.gherkin.background || []).forEach(function(s) { searchText += ' ' + s.keyword + ' ' + s.text; });
+      (ex.gherkin.scenario || []).forEach(function(s) { searchText += ' ' + s.keyword + ' ' + s.text; });
+    }
+    // Include feature description from features object
+    var feat = typeof features !== 'undefined' && features[ex.file];
+    if (feat) {
+      searchText += ' ' + (feat.name || '');
+      (feat.description || []).forEach(function(d) { searchText += ' ' + d; });
+    }
+    if (searchText.toLowerCase().indexOf(q) === -1) return false;
+  }
+  return true;
+}
+
+function applyScenarioFilter() {
+  var flist = document.getElementById('feature-list');
+
+  flist.querySelectorAll('[data-scenario-idx]').forEach(function(el) {
+    var idx = parseInt(el.dataset.scenarioIdx);
+    var ex = manifest[idx];
+    el.style.display = (ex && scenarioVisible(ex)) ? '' : 'none';
+  });
+
+  // Update counts and hide empty headers
+  var allBodies = Array.from(flist.querySelectorAll('[data-fbody]'));
+  allBodies.forEach(function(body) {
+    var key = body.dataset.fbody;
+    var header = flist.querySelector('[data-ftoggle="' + key + '"]');
+    if (!header) return;
+    var visibleCount = 0;
+    body.querySelectorAll('[data-scenario-idx]').forEach(function(el) {
+      if (el.style.display !== 'none') visibleCount++;
+    });
+    var countEl = header.querySelector('.count');
+    if (countEl) countEl.textContent = visibleCount;
+    header.style.display = visibleCount === 0 ? 'none' : '';
+    body.style.display = visibleCount === 0 ? 'none' : '';
+  });
+
+  // Update top-level stats
+  var visibleTotal = 0, visiblePassing = 0;
+  manifest.forEach(function(ex) {
+    if (scenarioVisible(ex)) {
+      visibleTotal++;
+      if (ex.status !== 'failed') visiblePassing++;
+    }
+  });
+  var failCount = visibleTotal - visiblePassing;
+  document.getElementById('total-count').textContent = visibleTotal + ' specs';
+  document.getElementById('pass-count').textContent = visiblePassing + ' passing';
+  document.getElementById('fail-count').textContent = failCount > 0 ? failCount + ' failing' : '';
+}
+
+// Attach filter listeners — two radio groups
+(function attachFilterListeners() {
+  var statusBtns = document.querySelectorAll('[data-status-filter]');
+  var typeBtns = document.querySelectorAll('[data-type-filter]');
+  if (statusBtns.length === 0) { setTimeout(attachFilterListeners, 50); return; }
+
+  statusBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      statusBtns.forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      statusFilter = btn.dataset.statusFilter;
+      setTimeout(applyScenarioFilter, 10);
+    });
+  });
+
+  typeBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      typeBtns.forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      typeFilter = btn.dataset.typeFilter;
+      setTimeout(applyScenarioFilter, 10);
+    });
+  });
+})();
+
+// Search input — debounced, filters + auto-expands matching sections
+(function() {
+  var searchInput = document.getElementById('spec-search');
+  var debounceTimer;
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function() {
+        searchQuery = searchInput.value.trim();
+        applyScenarioFilter();
+        // Auto-expand all sections when searching, collapse when cleared
+        if (searchQuery) setAllCollapsed(false);
+      }, 200);
+    });
+    // Clear on Escape
+    searchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        searchInput.value = '';
+        searchQuery = '';
+        applyScenarioFilter();
+      }
+    });
+  }
+})();
+
+// Expand/collapse all — works for both sidebar types
+function setAllCollapsed(state) {
+  var flist = document.getElementById('feature-list');
+  flist.querySelectorAll('[data-ftoggle]').forEach(function(el) {
+    var key = el.dataset.ftoggle;
+    featureCollapsed[key] = state;
+    var body = flist.querySelector('[data-fbody="' + key + '"]');
+    var chevron = el.querySelector('.chevron');
+    if (body) {
+      if (state) { body.classList.add('collapsed'); if (chevron) chevron.innerHTML = '&#9654;'; }
+      else { body.classList.remove('collapsed'); if (chevron) chevron.innerHTML = '&#9660;'; }
+    }
+  });
+  var list = document.getElementById('example-list');
+  list.querySelectorAll('[data-toggle]').forEach(function(el) {
+    var key = el.dataset.toggle;
+    var body = list.querySelector('[data-body="' + key + '"]');
+    var chevron = el.querySelector('.chevron');
+    if (body) {
+      if (state) { body.classList.add('collapsed'); if (chevron) chevron.innerHTML = '&#9654;'; }
+      else { body.classList.remove('collapsed'); if (chevron) chevron.innerHTML = '&#9660;'; }
+    }
+  });
+}
+document.getElementById('expand-all').onclick = function(e) { e.preventDefault(); setAllCollapsed(false); };
+document.getElementById('collapse-all').onclick = function(e) { e.preventDefault(); setAllCollapsed(true); };
+
+function selectExample(idx) {
+  const filtered = filteredManifest();
+  if (idx < 0 || idx >= filtered.length) return;
+  currentExampleIdx = idx;
+  currentStepIdx = 0;
+  currentGherkinIdx = 0;
+
+  var ex = filtered[idx];
+  if (ex.file.endsWith('.feature') && features[ex.file]) {
+    var scenarioName = (ex.groups || []).length >= 2 ? ex.groups[ex.groups.length - 1] : ex.description;
+    renderFeatureSidebar(ex.file, scenarioName);
+    renderGherkinAtIndex(ex);
+  } else {
+    document.getElementById('feature-list').style.display = 'none';
+    document.getElementById('example-list').style.display = '';
+    renderExampleList();
+    renderStep();
+  }
+}
+
+// Calculate image position/scale relative to its container
+function getImageMetrics() {
+  const img = document.getElementById('screenshot-img');
+  const wrapper = document.getElementById('screenshot-wrapper');
+  const imgRect = img.getBoundingClientRect();
+  const wrapperRect = wrapper.getBoundingClientRect();
+  return {
+    scaleX: imgRect.width / (img.naturalWidth || 1400),
+    scaleY: imgRect.height / (img.naturalHeight || 900),
+    offsetX: imgRect.left - wrapperRect.left,
+    offsetY: imgRect.top - wrapperRect.top,
+    imgWidth: imgRect.width,
+    imgHeight: imgRect.height
+  };
+}
+
+var stepIcons = { navigate: '→', click: '🖱', fill: '⌨', select: '▼', check: '☑', assert: '✓', confirm: '⚠' };
+
+function showOverlayCard(content) {
+  var wrapper = document.getElementById('screenshot-wrapper');
+  var img = document.getElementById('screenshot-img');
+  var overlays = document.getElementById('overlays');
+  img.style.display = 'none';
+  overlays.innerHTML = '';
+  var oldOverlay = wrapper.querySelector('.setup-overlay');
+  if (oldOverlay) oldOverlay.remove();
+
+  var div = document.createElement('div');
+  div.className = 'setup-overlay';
+  div.innerHTML = content;
+  wrapper.appendChild(div);
+}
+
+function showIntroOverlay(scenarioName, status) {
+  var statusText = status === 'failed' ? '<span style="color:#f87171;">✗ Failed</span>' : '<span style="color:#4ade80;">✓ Passed</span>';
+  showOverlayCard(
+    '<div style="font-size:0.8rem;color:#64748b;text-transform:uppercase;letter-spacing:0.15em;">Scenario</div>' +
+    '<div style="color:#e2e8f0;font-size:1.5rem;font-weight:600;max-width:600px;line-height:1.4;margin:0.5rem 0;">' + scenarioName + '</div>' +
+    '<div style="margin-top:1rem;">' + statusText + '</div>'
+  );
+}
+
+function showEndOverlay(scenarioName, status) {
+  var icon = status === 'failed' ? '✗' : '✓';
+  var color = status === 'failed' ? '#f87171' : '#4ade80';
+  var label = status === 'failed' ? 'Scenario Failed' : 'Scenario Passed';
+  showOverlayCard(
+    '<div style="font-size:3rem;color:' + color + ';">' + icon + '</div>' +
+    '<div style="color:' + color + ';font-size:1.2rem;font-weight:600;margin:0.5rem 0;">' + label + '</div>' +
+    '<div style="color:#94a3b8;font-size:0.9rem;">' + scenarioName + '</div>'
+  );
+}
+
+function showSetupOverlay(gi, bgSteps, scSteps, bgLen) {
+  var s = gi < bgLen ? bgSteps[gi] : scSteps[gi - bgLen];
+  if (!s) return;
+
+  var text = s.text;
+  var icon, note;
+
+  // Login step — show key icon with actor colour and full name
+  var loginActorPattern = actorNames.length > 0
+    ? new RegExp('^(' + actorNames.map(function(n) { return n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ') logs in$')
+    : null;
+  var loginMatch = loginActorPattern ? text.match(loginActorPattern) : null;
+  if (loginMatch) {
+    var actor = loginMatch[1];
+    var color = actorColors[actor] || '#e2e8f0';
+    // Find full name from users
+    var fullName = text;
+    if (typeof manifest !== 'undefined') {
+      // Look up from background steps
+      var bgSteps = (manifest[0] || {}).gherkin ? manifest[0].gherkin.background : [];
+      bgSteps.forEach(function(bs) {
+        var m = bs.text.match(new RegExp('(contractor|foreman|admin).*"(' + actor + '[^"]*)"', 'i'));
+        if (m) fullName = m[2];
+      });
+    }
+    showOverlayCard(
+      '<div class="setup-icon">🔑</div>' +
+      '<div class="setup-keyword" style="color:' + color + ';">' + s.keyword.toUpperCase() + '</div>' +
+      '<div class="setup-text"><span style="color:' + color + ';font-weight:700;">' + fullName + '</span> logs in</div>' +
+      '<div class="setup-note">Authentication — switching user session</div>'
+    );
+    return;
+  }
+
+  // Host-configured overlay rules — first match wins
+  var rules = (window.Specbook && window.Specbook.config && window.Specbook.config.setupOverlayRules) || [];
+  var matched = false;
+  for (var ri = 0; ri < rules.length; ri++) {
+    var rule = rules[ri];
+    try {
+      var re = new RegExp(rule.pattern, rule.flags || '');
+      if (text.match(re)) {
+        icon = rule.icon;
+        note = rule.note;
+        matched = true;
+        break;
+      }
+    } catch (e) {
+      // Skip invalid pattern
+    }
+  }
+  if (!matched) {
+    icon = '⚙️';
+    note = 'No browser interaction';
+  }
+
+  var displayText = text.replace(/"([^"]*)"/g, function(match, inner) {
+    for (var name in actorColors) {
+      if (inner.indexOf(name) === 0) {
+        return '"<span style="color:' + actorColors[name] + ';font-weight:700;">' + inner + '</span>"';
+      }
+    }
+    return '"<span class="quoted">' + inner + '</span>"';
+  });
+  var sourceHtml = s.source ? renderStepSource(s.source) : '';
+  showOverlayCard(
+    '<div class="setup-icon">' + icon + '</div>' +
+    '<div class="setup-keyword">' + s.keyword + '</div>' +
+    '<div class="setup-text">' + displayText + '</div>' +
+    '<div class="setup-note">' + note + '</div>' +
+    sourceHtml
+  );
+}
+
+function highlightGherkinStep(stepList, activeGi) {
+  stepList.querySelectorAll('li[data-gi]').forEach(function(el) {
+    var gi = parseInt(el.dataset.gi);
+    el.classList.toggle('active', gi === activeGi);
+    el.style.opacity = gi > activeGi ? '0.35' : '';
+  });
+  var activeLi = stepList.querySelector('li.active');
+  if (activeLi) activeLi.scrollIntoView({ block: 'nearest' });
+}
+
+// Actor colours — host-configured via Specbook.config.actorColors
+var actorColors = (window.Specbook && window.Specbook.config && window.Specbook.config.actorColors) || {};
+var actorNames = Object.keys(actorColors);
+var actorPattern = actorNames.length > 0
+  ? new RegExp('^(' + actorNames.map(function(n) { return n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')\\b')
+  : null;
+
+function actorFromText(text) {
+  if (!actorPattern) return null;
+  var m = text.match(actorPattern);
+  return m ? m[1] : null;
+}
+
+function colorizeStep(rawText) {
+  // Highlight quoted strings, but colour actor names within quotes
+  var text = rawText.replace(/"([^"]*)"/g, function(match, inner) {
+    // Check if the quoted string contains an actor name
+    for (var name in actorColors) {
+      if (inner.indexOf(name) === 0) {
+        return '&ldquo;<span style=color:' + actorColors[name] + ';font-weight:600>' + inner + '</span>&rdquo;';
+      }
+    }
+    return '&ldquo;<span style=color:#4ade80>' + inner + '</span>&rdquo;';
+  });
+  // Colour actor names at start of step text (named-actor style)
+  var actor = actorFromText(rawText);
+  if (actor && actorColors[actor]) {
+    text = text.replace(new RegExp('^' + actor + '\\b'), '<span style=color:' + actorColors[actor] + ';font-weight:600>' + actor + '</span>');
+  }
+  return text;
+}
+
+function renderStepSource(src) {
+  if (!src || !src.body) return '';
+  // Body is already stripped of `step '...' do` / `end` by the recorder.
+  // Just clean up any stray end lines from older recordings.
+  var lines = src.body.split('\n');
+  if (lines[0] && lines[0].match(/^\s*step\s/)) lines.shift();
+  while (lines.length > 0 && lines[lines.length - 1].match(/^\s*end\s*$/)) lines.pop();
+  // Dedent
+  var minIndent = 999;
+  lines.forEach(function(l) { if (l.trim().length > 0) { var m = l.match(/^(\s*)/); if (m[1].length < minIndent) minIndent = m[1].length; }});
+  var body = lines.map(function(l) { return l.substring(minIndent); }).join('\n').trim();
+  if (!body) return '';
+  // HTML escape
+  body = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Tokenize then reassemble to avoid nested replacements
+  // 1. Extract strings and comments into placeholders
+  var tokens = [];
+  body = body.replace(/#[^\n]*/g, function(m) { tokens.push('<span class="src-comment">' + m + '</span>'); return '__TK' + (tokens.length - 1) + '%%'; });
+  body = body.replace(/"[^"]*"/g, function(m) { tokens.push('<span class="src-string">' + m + '</span>'); return '__TK' + (tokens.length - 1) + '%%'; });
+  body = body.replace(/'[^']*'/g, function(m) { tokens.push('<span class="src-string">' + m + '</span>'); return '__TK' + (tokens.length - 1) + '%%'; });
+
+  // 2. Ruby keywords
+  body = body.replace(/\b(def|do|end|if|unless|else|elsif|return|nil|true|false|rescue|begin|yield|raise|class|module|require|require_relative|include|extend|prepend|attr_accessor|attr_reader|new|self)\b/g, '<span class="src-keyword">$1</span>');
+
+  // 3. RSpec/test keywords
+  body = body.replace(/\b(expect|allow|receive|have_received|to|not_to|eq|be_nil|be_present|be_a|have_css|have_text|have_link|have_button|have_field|described_class|subject|let!?|before|after|context|describe|it)\b/g, '<span style="color:#7dd3fc;">$1</span>');
+
+  // 4. Symbols
+  body = body.replace(/:(\w+)/g, '<span style="color:#fbbf24;">:$1</span>');
+
+  // 5. Instance variables
+  body = body.replace(/@\w+/g, '<span style="color:#f9a8d4;">$&</span>');
+
+  // 6. Constants (PascalCase)
+  body = body.replace(/\b([A-Z][a-zA-Z0-9]*(::[A-Z][a-zA-Z0-9]*)*)\b/g, '<span style="color:#c4b5fd;">$1</span>');
+
+  // 7. Method calls after dot
+  body = body.replace(/\.(\w+[!?]?)/g, '.<span style="color:#93c5fd;">$1</span>');
+
+  // 8. Numbers
+  body = body.replace(/\b(\d+)\b/g, '<span style="color:#fbbf24;">$1</span>');
+
+  // Restore tokens
+  body = body.replace(/__TK(\d+)%%/g, function(_, i) { return tokens[parseInt(i)]; });
+
+  var file = src.file + ':' + src.line;
+  var editorBase = (window.Specbook && window.Specbook.config && window.Specbook.config.editorBase) || null;
+  var fileHtml = editorBase
+    ? '<a href="' + editorBase + '/' + src.file + ':' + src.line + '" class="src-file">' + file + '</a>'
+    : '<span class="src-file">' + file + '</span>';
+  return '<div class="step-source">' + fileHtml + body + '</div>';
+}
+
+function renderStep() {
+  const filtered = filteredManifest();
+  if (filtered.length === 0) return;
+  const example = filtered[currentExampleIdx];
+  const step = example.steps[currentStepIdx];
+
+  const img = document.getElementById('screenshot-img');
+  const wrapper = document.getElementById('screenshot-wrapper');
+  // Remove any previous overlay
+  var oldOverlay = wrapper.querySelector('.setup-overlay');
+  if (oldOverlay) oldOverlay.remove();
+  var oldCard = wrapper.querySelector('.gherkin-card');
+  if (oldCard) oldCard.remove();
+
+  // No-screenshot specs (services, models): show gherkin steps as main content
+  if (!step && example.gherkin) {
+    img.style.display = 'none';
+    var card = document.createElement('div');
+    card.className = 'gherkin-card';
+    var scenarioName = example.description || example.name;
+    var html = '<div class="gherkin-title">Scenario</div>';
+    html += '<div class="gherkin-scenario-name">' + scenarioName + '</div>';
+    html += '<ul class="gherkin-steps-list">';
+    var bg = example.gherkin.background || [];
+    var sc = example.gherkin.scenario || [];
+    if (bg.length > 0) {
+      html += '<li class="bg-label">Background</li>';
+      bg.forEach(function(s) {
+        html += '<li><span class="kw">' + s.keyword + '</span> ' + colorizeStep(s.text) + '</li>';
+        if (s.source) html += renderStepSource(s.source);
+      });
+      html += '<li class="bg-label">Scenario</li>';
+    }
+    sc.forEach(function(s) {
+      var kwClass = s.keyword === 'Then' ? 'kw kw-then' : 'kw';
+      html += '<li><span class="' + kwClass + '">' + s.keyword + '</span> ' + colorizeStep(s.text) + '</li>';
+      if (s.source) html += renderStepSource(s.source);
+    });
+    html += '</ul>';
+    var statusClass = example.status === 'failed' ? 'failed' : 'passed';
+    var statusIcon = example.status === 'failed' ? '✗ Failed' : '✓ Passed';
+    html += '<div class="gherkin-status ' + statusClass + '">' + statusIcon + '</div>';
+    card.innerHTML = html;
+    wrapper.appendChild(card);
+
+    // Clear the step list pane
+    document.getElementById('step-list').innerHTML = '';
+    document.getElementById('progress-bar').style.width = '100%';
+    return;
+  }
+
+  if (!step) return;
+
+  img.style.display = '';
+
+  if (step.file) {
+    img.src = screenshotBase + step.file;
+  }
+
+  // Build step list — Gherkin steps for features, low-level steps for system specs
+  const stepList = document.getElementById('step-list');
+  if (example.gherkin && example.gherkin.scenario) {
+    var bgSteps = example.gherkin.background || [];
+    var scSteps = example.gherkin.scenario;
+    // Current screenshot's gherkin index (gi field, offset by background length)
+    var currentGi = (step.gi !== undefined) ? step.gi : -1;
+    var bgLen = bgSteps.length;
+
+    // Build map: for each gherkin index, find the first screenshot step
+    var giToScreenshot = {};
+    example.steps.forEach(function(s, si) {
+      if (s.gi !== undefined) {
+        // Prefer steps with bbox (visible element) over those without
+        if (giToScreenshot[s.gi] === undefined || (s.bbox && !example.steps[giToScreenshot[s.gi]].bbox)) giToScreenshot[s.gi] = si;
+      }
+    });
+
+    function renderGherkinStep(s, gi, label) {
+      var isCurrent = gi === currentGi;
+      var isTodo = gi > currentGi;
+      var cls = isCurrent ? 'active' : '';
+      var opacity = isTodo ? 'opacity:0.35;' : '';
+      var kwColor = s.keyword === 'Then' ? '#4ade80' : '#60a5fa';
+      var text = colorizeStep(s.text);
+      return '<li class="' + cls + '" data-gi="' + gi + '" style="' + opacity + '"><span class="step-icon" style="color:' + kwColor + ';min-width:3.5em;display:inline-block;font-weight:600;">' + s.keyword + '</span> ' + text + '</li>';
+    }
+
+    var html = '';
+    // Background steps
+    if (bgLen > 0) {
+      html += '<li style="color:#64748b;font-size:0.7rem;padding:0.15rem 0.5rem;font-style:italic;">Background</li>';
+      bgSteps.forEach(function(s, i) { html += renderGherkinStep(s, i, 'bg'); });
+      html += '<li style="border-bottom:1px solid #334155;padding:0;margin:0.25rem 0;"></li>';
+    }
+    // Scenario label + steps
+    html += '<li style="color:#c084fc;font-size:0.72rem;padding:0.3rem 0.5rem 0.15rem;font-weight:600;letter-spacing:0.03em;border-bottom:1px solid #334155;margin-bottom:0.2rem;"><span style="opacity:0.6;">Scenario:</span> ' + (example.description || '') + '</li>';
+    scSteps.forEach(function(s, i) { html += renderGherkinStep(s, bgLen + i, 'sc'); });
+
+    stepList.innerHTML = html;
+
+    stepList.querySelectorAll('li[data-gi]').forEach(function(el) {
+      el.addEventListener('click', function() {
+        if (hasTextSelection()) return;
+        currentGherkinIdx = parseInt(el.dataset.gi) + 1; // +1 for intro offset
+        renderGherkinAtIndex(example);
+      });
+    });
+  } else {
+    stepList.innerHTML = example.steps.map((s, i) => {
+      var icon = stepIcons[s.action] || '·';
+      var desc = s.description || s.action;
+      var cls = i === currentStepIdx ? 'active' : '';
+      return `<li class="${cls}" data-step="${i}"><span class="step-icon">${icon}</span>${desc}</li>`;
+    }).join('');
+
+    stepList.querySelectorAll('li[data-step]').forEach(el => {
+      el.addEventListener('click', () => { if (hasTextSelection()) return; currentStepIdx = parseInt(el.dataset.step); renderStep(); });
+    });
+  }
+
+  // Scroll active step into view
+  var activeLi = stepList.querySelector('li.active');
+  if (activeLi) activeLi.scrollIntoView({ block: 'nearest' });
+
+  if (isGherkinExample(example)) {
+    // Sync gherkin index from screenshot's gi (+1 for intro offset)
+    if (step.gi !== undefined) currentGherkinIdx = step.gi + 1;
+    var total = gherkinStepCount(example);
+    var pct = ((currentGherkinIdx + 1) / total * 100).toFixed(1);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('btn-prev').disabled = (currentGherkinIdx === 0 && currentExampleIdx === 0);
+    document.getElementById('btn-next').disabled = (currentGherkinIdx === total - 1 && currentExampleIdx === filtered.length - 1);
+  } else {
+    var pct = ((currentStepIdx + 1) / example.steps.length * 100).toFixed(1);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('btn-prev').disabled = (currentStepIdx === 0 && currentExampleIdx === 0);
+    document.getElementById('btn-next').disabled = (currentStepIdx === example.steps.length - 1 && currentExampleIdx === filtered.length - 1);
+  }
+
+  // Draw overlays after image loads
+  const drawOverlays = () => updateOverlays(step);
+  if (img.complete && img.naturalWidth) {
+    drawOverlays();
+  } else {
+    img.addEventListener('load', drawOverlays, { once: true });
+  }
+}
+
+function updateOverlays(step) {
+  const container = document.getElementById('overlays');
+  container.innerHTML = '';
+
+  const m = getImageMetrics();
+  const action = step.action || 'navigate';
+  const actionLabels = { click: '🖱 Click', fill: '⌨ Type', select: '▼ Select', check: '☑ Check', navigate: '→ Navigate', assert: '✓ Assertions', confirm: '⚠ Confirm' };
+
+  // Action badge (always)
+  const badge = document.createElement('div');
+  badge.className = `action-badge ${action}`;
+  badge.textContent = actionLabels[action] || action;
+  container.appendChild(badge);
+
+  if (action === 'assert' && step.assertions) {
+    // Show ALL assertion highlights simultaneously
+    const assertionList = document.createElement('div');
+    assertionList.className = 'assertion-list';
+
+    step.assertions.forEach((assertion, i) => {
+      // Draw bounding boxes for each assertion
+      (assertion.bboxes || []).forEach(bbox => {
+        const box = document.createElement('div');
+        box.className = `overlay-box ${assertion.negative ? 'assert-negative' : 'assert'}`;
+        box.style.left = `${m.offsetX + bbox.x * m.scaleX - 4}px`;
+        box.style.top = `${m.offsetY + bbox.y * m.scaleY - 4}px`;
+        box.style.width = `${bbox.width * m.scaleX + 8}px`;
+        box.style.height = `${bbox.height * m.scaleY + 8}px`;
+        box.style.animationDelay = `${i * 0.1}s`;
+        container.appendChild(box);
+
+        // Label above the box
+        const label = document.createElement('div');
+        label.className = `overlay-label ${assertion.negative ? 'negative' : 'positive'}`;
+        label.textContent = assertion.text;
+        label.style.left = `${m.offsetX + bbox.x * m.scaleX - 4}px`;
+        label.style.top = `${m.offsetY + bbox.y * m.scaleY - 22}px`;
+        label.style.animationDelay = `${i * 0.1}s`;
+        container.appendChild(label);
+      });
+
+      // Add to assertion list panel
+      const item = document.createElement('div');
+      item.className = `assertion-item ${assertion.negative ? 'negative' : 'positive'}`;
+      item.textContent = `${assertion.negative ? '✗' : '✓'} ${assertion.text}`;
+      item.style.animationDelay = `${i * 0.08}s`;
+      assertionList.appendChild(item);
+    });
+
+    container.appendChild(assertionList);
+
+  } else if (step.bbox) {
+    // Single element highlight (click, fill, select, check)
+    const box = document.createElement('div');
+    box.className = `overlay-box ${action}`;
+    const x = m.offsetX + step.bbox.x * m.scaleX;
+    const y = m.offsetY + step.bbox.y * m.scaleY;
+    const w = step.bbox.width * m.scaleX;
+    const h = step.bbox.height * m.scaleY;
+    box.style.left = `${x - 4}px`;
+    box.style.top = `${y - 4}px`;
+    box.style.width = `${w + 8}px`;
+    box.style.height = `${h + 8}px`;
+    container.appendChild(box);
+
+    // Tap circle for clicks — sized slightly larger than element
+    if (action === 'click') {
+      const tap = document.createElement('div');
+      tap.className = 'tap-circle';
+      const diameter = Math.min(w, h) * 1.6 + 16;
+      tap.style.width = `${diameter}px`;
+      tap.style.height = `${diameter}px`;
+      tap.style.left = `${x + w / 2 - diameter / 2}px`;
+      tap.style.top = `${y + h / 2 - diameter / 2}px`;
+      container.appendChild(tap);
+
+      // Cursor icon
+      const cursor = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      cursor.setAttribute('viewBox', '0 0 24 24');
+      cursor.setAttribute('width', '24');
+      cursor.setAttribute('height', '24');
+      cursor.className = 'cursor-icon';
+      cursor.style.left = `${x + w / 2}px`;
+      cursor.style.top = `${y + h / 2}px`;
+      const cPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      cPath.setAttribute('d', 'M4 2L4 20L8.5 15.5L12.5 22L15 21L11 14L17 14L4 2Z');
+      cPath.setAttribute('fill', 'white');
+      cPath.setAttribute('stroke', '#1e293b');
+      cPath.setAttribute('stroke-width', '1.5');
+      cursor.appendChild(cPath);
+      container.appendChild(cursor);
+    }
+  }
+}
+
+function nextStep() {
+  const filtered = filteredManifest();
+  const example = filtered[currentExampleIdx];
+  if (isGherkinExample(example)) {
+    var total = gherkinStepCount(example);
+    if (currentGherkinIdx < total - 1) {
+      currentGherkinIdx++;
+      renderGherkinAtIndex(example);
+    } else if (currentExampleIdx < filtered.length - 1) {
+      selectExample(currentExampleIdx + 1);
+    } else {
+      stopAutoplay();
+    }
+  } else {
+    if (currentStepIdx < example.steps.length - 1) {
+      currentStepIdx++;
+      renderStep();
+    } else if (currentExampleIdx < filtered.length - 1) {
+      selectExample(currentExampleIdx + 1);
+    } else {
+      stopAutoplay();
+    }
+  }
+}
+
+function prevStep() {
+  const filtered = filteredManifest();
+  const example = filtered[currentExampleIdx];
+  if (isGherkinExample(example)) {
+    if (currentGherkinIdx > 0) {
+      currentGherkinIdx--;
+      renderGherkinAtIndex(example);
+    } else if (currentExampleIdx > 0) {
+      // Jump to end of previous scenario
+      var prevIdx = currentExampleIdx - 1;
+      var prevEx = filtered[prevIdx];
+      if (isGherkinExample(prevEx)) {
+        currentGherkinIdx = gherkinStepCount(prevEx) - 1;
+      } else {
+        currentStepIdx = prevEx.steps.length - 1;
+      }
+      currentExampleIdx = prevIdx;
+      // Update sidebar + viewer
+      var scenarioName = (prevEx.groups || []).length >= 2 ? prevEx.groups[prevEx.groups.length - 1] : prevEx.description;
+      if (prevEx.file.endsWith('.feature') && features[prevEx.file]) {
+        renderFeatureSidebar(prevEx.file, scenarioName);
+      }
+      renderGherkinAtIndex(prevEx);
+    }
+  } else {
+    if (currentStepIdx > 0) {
+      currentStepIdx--;
+      renderStep();
+    } else if (currentExampleIdx > 0) {
+      var prevIdx = currentExampleIdx - 1;
+      var prevEx = filtered[prevIdx];
+      if (isGherkinExample(prevEx)) {
+        currentGherkinIdx = gherkinStepCount(prevEx) - 1;
+      } else {
+        currentStepIdx = prevEx.steps.length - 1;
+      }
+      currentExampleIdx = prevIdx;
+      var scenarioName = (prevEx.groups || []).length >= 2 ? prevEx.groups[prevEx.groups.length - 1] : prevEx.description;
+      if (prevEx.file.endsWith('.feature') && features[prevEx.file]) {
+        renderFeatureSidebar(prevEx.file, scenarioName);
+      } else {
+        renderExampleList();
+      }
+      renderGherkinAtIndex(prevEx);
+    }
+  }
+}
+
+// Navigate to a specific gherkin index — show screenshot or overlay
+// Index 0 = intro card, 1..N = gherkin steps (offset by 1), last = end card
+function renderGherkinAtIndex(example) {
+  var bgSteps = example.gherkin.background || [];
+  var scSteps = example.gherkin.scenario;
+  var bgLen = bgSteps.length;
+  var total = gherkinStepCount(example);
+  var gi = currentGherkinIdx;
+
+  // Intro card
+  if (gi === 0) {
+    showIntroOverlay(example.description || '', example.status);
+    renderGherkinStepList(example, -1);
+    updateGherkinProgress(total, gi);
+    return;
+  }
+  // End card
+  if (gi === total - 1) {
+    showEndOverlay(example.description || '', example.status);
+    renderGherkinStepList(example, -2);
+    updateGherkinProgress(total, gi);
+    return;
+  }
+
+  // Actual gherkin step (offset by 1 for intro)
+  var realGi = gi - 1;
+
+  // Build gi→screenshot map (prefer bbox > real actions > gherkin captures)
+  var giToScreenshot = {};
+  example.steps.forEach(function(s, si) {
+    if (s.gi !== undefined) {
+      var existing = giToScreenshot[s.gi] !== undefined ? example.steps[giToScreenshot[s.gi]] : null;
+      if (!existing) {
+        giToScreenshot[s.gi] = si;
+      } else if (s.bbox && !existing.bbox) {
+        giToScreenshot[s.gi] = si;
+      } else if (s.action !== 'gherkin' && existing.action === 'gherkin') {
+        giToScreenshot[s.gi] = si;
+      }
+    }
+  });
+
+  var screenshotIdx = giToScreenshot[realGi];
+  var screenshotStep = screenshotIdx !== undefined ? example.steps[screenshotIdx] : null;
+
+  // Show overlay for: no screenshot, or "gherkin" action (stale page capture from non-interactive step)
+  if (!screenshotStep || screenshotStep.action === 'gherkin') {
+    showSetupOverlay(realGi, bgSteps, scSteps, bgLen);
+    renderGherkinStepList(example, realGi);
+    updateGherkinProgress(total, gi);
+  } else {
+    currentStepIdx = screenshotIdx;
+    renderStep();
+  }
+}
+
+function updateGherkinProgress(total, gi) {
+  var pct = ((gi + 1) / total * 100).toFixed(1);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('btn-prev').disabled = (gi === 0 && currentExampleIdx === 0);
+  document.getElementById('btn-next').disabled = (gi === total - 1 && currentExampleIdx === filteredManifest().length - 1);
+}
+
+// Render just the gherkin step list for a given active gi (used by overlay mode)
+function renderGherkinStepList(example, activeGi) {
+  var bgSteps = example.gherkin.background || [];
+  var scSteps = example.gherkin.scenario;
+  var bgLen = bgSteps.length;
+  var stepList = document.getElementById('step-list');
+
+  var giToScreenshot = {};
+  example.steps.forEach(function(s, si) {
+    if (s.gi !== undefined) {
+      if (giToScreenshot[s.gi] === undefined || (s.bbox && !example.steps[giToScreenshot[s.gi]].bbox)) giToScreenshot[s.gi] = si;
+    }
+  });
+
+  function renderG(s, gi) {
+    var isCurrent = gi === activeGi;
+    var isTodo = gi > activeGi;
+    var cls = isCurrent ? 'active' : '';
+    var opacity = isTodo ? 'opacity:0.35;' : '';
+    var kwColor = s.keyword === 'Then' ? '#4ade80' : '#60a5fa';
+    var text = colorizeStep(s.text);
+    return '<li class="' + cls + '" data-gi="' + gi + '" style="' + opacity + '"><span class="step-icon" style="color:' + kwColor + ';min-width:3.5em;display:inline-block;font-weight:600;">' + s.keyword + '</span> ' + text + '</li>';
+  }
+
+  var html = '';
+  if (bgLen > 0) {
+    html += '<li style="color:#64748b;font-size:0.7rem;padding:0.15rem 0.5rem;font-style:italic;">Background</li>';
+    bgSteps.forEach(function(s, i) { html += renderG(s, i); });
+    html += '<li style="border-bottom:1px solid #334155;padding:0;margin:0.25rem 0;"></li>';
+  }
+  html += '<li style="color:#c084fc;font-size:0.7rem;padding:0.15rem 0.5rem;font-style:italic;">Scenario: ' + (example.description || '') + '</li>';
+  scSteps.forEach(function(s, i) { html += renderG(s, bgLen + i); });
+  stepList.innerHTML = html;
+
+  stepList.querySelectorAll('li[data-gi]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      if (hasTextSelection()) return;
+      currentGherkinIdx = parseInt(el.dataset.gi) + 1; // +1 for intro offset
+      renderGherkinAtIndex(example);
+    });
+  });
+
+  var activeLi = stepList.querySelector('li.active');
+  if (activeLi) activeLi.scrollIntoView({ block: 'nearest' });
+}
+
+function toggleAutoplay() { autoplayTimer ? stopAutoplay() : startAutoplay(); }
+
+function startAutoplay() {
+  const speed = parseInt(document.getElementById('speed-select').value);
+  document.getElementById('btn-play').innerHTML = '⏸ Pause';
+  document.getElementById('autoplay-indicator').classList.add('active');
+  autoplayTimer = setInterval(nextStep, speed);
+}
+
+function stopAutoplay() {
+  clearInterval(autoplayTimer);
+  autoplayTimer = null;
+  document.getElementById('btn-play').innerHTML = '▶ Play';
+  document.getElementById('autoplay-indicator').classList.remove('active');
+}
+
+document.getElementById('btn-next')?.addEventListener('click', nextStep);
+document.getElementById('btn-prev')?.addEventListener('click', prevStep);
+document.getElementById('btn-play')?.addEventListener('click', toggleAutoplay);
+document.getElementById('speed-select')?.addEventListener('change', () => {
+  if (autoplayTimer) { stopAutoplay(); startAutoplay(); }
+});
+
+document.getElementById('progress-bar')?.addEventListener('click', (e) => {
+  const filtered = filteredManifest();
+  const example = filtered[currentExampleIdx];
+  const rect = e.target.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  currentStepIdx = Math.min(Math.floor(pct * example.steps.length), example.steps.length - 1);
+  renderStep();
+});
+
+// Switch to text cursor while dragging to select text
+document.addEventListener('mousemove', (e) => {
+  if (e.buttons === 1 && window.getSelection().toString().length > 0) {
+    document.body.classList.add('selecting');
+  }
+});
+document.addEventListener('mouseup', () => {
+  document.body.classList.remove('selecting');
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === 'l') nextStep();
+  if (e.key === 'ArrowLeft' || e.key === 'h') prevStep();
+  if (e.key === ' ') { e.preventDefault(); toggleAutoplay(); }
+  if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); selectExample(currentExampleIdx + 1); }
+  if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); selectExample(currentExampleIdx - 1); }
+});
+
+document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filter = btn.dataset.filter;
+    currentExampleIdx = 0;
+    currentStepIdx = 0;
+    renderExampleList();
+    if (filteredManifest().length > 0) renderStep();
+  });
+});
+
+// Redraw overlays on window resize
+window.addEventListener('resize', () => {
+  const filtered = filteredManifest();
+  if (filtered.length > 0) {
+    const step = filtered[currentExampleIdx]?.steps[currentStepIdx];
+    if (step) updateOverlays(step);
+  }
+});
+
+if (manifest.length > 0) {
+  // Update counts
+  var passCount = manifest.filter(function(ex) { return ex.status !== 'failed'; }).length;
+  var failCount = manifest.filter(function(ex) { return ex.status === 'failed'; }).length;
+  document.getElementById('total-count').textContent = manifest.length + ' specs';
+  document.getElementById('pass-count').textContent = passCount + ' passing';
+  document.getElementById('fail-count').textContent = failCount > 0 ? failCount + ' failing' : '';
+
+  selectExample(0);
+}
+</script>
+</body>
+</html>
