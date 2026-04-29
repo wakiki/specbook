@@ -273,6 +273,11 @@ function renderFeatureSidebar(featureFile, activeScenarioName) {
     });
   });
 
+  // Re-apply current filter (visual/passing/failing/search) to the freshly rendered sidebar.
+  // Without this, clicking a scenario rebuilds the sidebar from the full manifest and loses
+  // the active filter state — non-visual specs would reappear under the Visual filter.
+  applyScenarioFilter();
+
   // Scroll active into view
   var activeBlock = featureList.querySelector('.scenario-block.active');
   if (activeBlock) activeBlock.scrollIntoView({ block: 'nearest' });
